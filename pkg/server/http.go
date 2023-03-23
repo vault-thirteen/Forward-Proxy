@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"compress/gzip"
 	"io"
 	"net"
@@ -8,7 +9,10 @@ import (
 	"time"
 
 	zlog "github.com/rs/zerolog/log"
+	bom "github.com/vault-thirteen/auxie/BOM"
+	rs "github.com/vault-thirteen/auxie/ReaderSeeker"
 	"github.com/vault-thirteen/errorz"
+	"github.com/vault-thirteen/header"
 )
 
 func (s *Server) router(w http.ResponseWriter, req *http.Request) {
@@ -116,7 +120,8 @@ func (s *Server) processHttpRequest(w http.ResponseWriter, req *http.Request) {
 
 	// Decode the response.
 	var respBody []byte
-	respBody, err = s.decodeResponse(targetResponse)
+	var contentEncodingHasChanged bool
+	respBody, contentEncodingHasChanged, err = s.decodeResponse(targetResponse)
 	if err != nil {
 		http.Error(w, "decoding error", http.StatusInternalServerError)
 		zlog.Error().Err(err).Msg("")
@@ -124,46 +129,17 @@ func (s *Server) processHttpRequest(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Respond to the client.
-	w.WriteHeader(targetResponse.StatusCode)
-	s.writeResponseHeaders(targetResponse.Header, w)
-	_, err = w.Write(respBody)
-	if err != nil {
-		zlog.Error().Err(err).Msg("")
-		return
-	}
+	s.writeResponseHeaders(w, targetResponse, respBody, contentEncodingHasChanged)
 }
 
 func (s *Server) modifyRequest(req *http.Request) {
 	req.RequestURI = ""
-	req.Header.Del("Keep-Alive")
-	req.Header.Del("Connection")
-	req.Header.Add("Connection", "close")
+	req.Header.Del(header.HttpHeaderKeepAlive)
+	req.Header.Del(header.HttpHeaderConnection)
+	req.Header.Add(header.HttpHeaderConnection, "close")
 }
 
-// TODO: Remove BOM when it is present.
-func (s *Server) decodeResponse(targetResponse *http.Response) (body []byte, err error) {
-	contentEncoding := targetResponse.Header.Get("Content-Encoding")
-	if (contentEncoding == "gzip") || (contentEncoding == "x-gzip") {
-		var gzipReader *gzip.Reader
-		gzipReader, err = gzip.NewReader(targetResponse.Body)
-		if err != nil {
-			return nil, err
-		}
-		defer func() {
-			derr := gzipReader.Close()
-			if derr != nil {
-				err = errorz.Combine(err, derr)
-			}
-		}()
-
-		body, err = io.ReadAll(gzipReader)
-		if err != nil {
-			return nil, err
-		}
-
-		return body, nil
-	}
-
+func (s *Server) decodeResponse(targetResponse *http.Response) (body []byte, contentEncodingHasChanged bool, err error) {
 	defer func() {
 		derr := targetResponse.Body.Close()
 		if derr != nil {
@@ -171,18 +147,110 @@ func (s *Server) decodeResponse(targetResponse *http.Response) (body []byte, err
 		}
 	}()
 
-	body, err = io.ReadAll(targetResponse.Body)
-	if err != nil {
-		return nil, err
+	// bodyIsReady is set to true when HTTP body has been read.
+	var bodyIsReady = false
+
+	// Get the body.
+	contentEncoding := targetResponse.Header.Get(header.HttpHeaderContentEncoding)
+	if (contentEncoding == "gzip") || (contentEncoding == "x-gzip") {
+		// Content is zipped.
+		if s.parameters.MustDecodeGzip {
+			var gzipReader *gzip.Reader
+			gzipReader, err = gzip.NewReader(targetResponse.Body)
+			if err != nil {
+				return nil, contentEncodingHasChanged, err
+			}
+			defer func() {
+				derr := gzipReader.Close()
+				if derr != nil {
+					err = errorz.Combine(err, derr)
+				}
+			}()
+
+			body, err = io.ReadAll(gzipReader)
+			if err != nil {
+				return nil, contentEncodingHasChanged, err
+			}
+
+			// Save results.
+			contentEncodingHasChanged = true
+			bodyIsReady = true
+		}
 	}
 
-	return body, nil
+	if !bodyIsReady {
+		body, err = io.ReadAll(targetResponse.Body)
+		if err != nil {
+			return nil, contentEncodingHasChanged, err
+		}
+
+		// Save results.
+		bodyIsReady = true
+	}
+
+	// Remove the BOM if needed.
+	if s.parameters.MustRemoveBOM {
+		body, err = s.removeBOM(body)
+		if err != nil {
+			return nil, contentEncodingHasChanged, err
+		}
+	}
+
+	return body, contentEncodingHasChanged, nil
 }
 
-func (s *Server) writeResponseHeaders(responseHeaders http.Header, w http.ResponseWriter) {
-	for hdrName, lines := range responseHeaders {
+func (s *Server) writeResponseHeaders(w http.ResponseWriter, response *http.Response, respBody []byte, contentEncodingHasChanged bool) {
+	if contentEncodingHasChanged {
+		response.Header.Del("Content-Encoding")
+	}
+
+	for hdrName, lines := range response.Header {
 		for _, line := range lines {
 			w.Header().Add(hdrName, line)
 		}
 	}
+
+	w.WriteHeader(response.StatusCode)
+
+	_, err := w.Write(respBody)
+	if err != nil {
+		zlog.Error().Err(err).Msg("")
+		return
+	}
+}
+
+func (s *Server) removeBOM(data []byte) (newData []byte, err error) {
+	rdr := bytes.NewReader(data)
+
+	var possibleEncodings []bom.Encoding
+	possibleEncodings, err = bom.GetEncoding(rdr, false)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(possibleEncodings) == 0 {
+		// Either no BOM is found or we do not know something.
+		return data, nil
+	}
+
+	var encoding bom.Encoding
+	if len(possibleEncodings) > 1 {
+		// Guys, who created BOMs with similar bytes, you are not clever.
+		encoding = possibleEncodings[0]
+	} else {
+		encoding = possibleEncodings[0]
+	}
+
+	var rdr2 rs.ReaderSeeker
+	rdr2, err = bom.SkipBOMPrefix(rdr, encoding)
+	if err != nil {
+		return nil, err
+	}
+
+	newData, err = io.ReadAll(rdr2)
+	if err != nil {
+		return nil, err
+	}
+
+	return newData, nil
 }
