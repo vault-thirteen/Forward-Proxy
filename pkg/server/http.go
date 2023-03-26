@@ -1,7 +1,6 @@
 package server
 
 import (
-	"bytes"
 	"compress/gzip"
 	"io"
 	"net"
@@ -9,9 +8,7 @@ import (
 	"time"
 
 	zlog "github.com/rs/zerolog/log"
-	bom "github.com/vault-thirteen/auxie/BOM"
-	rs "github.com/vault-thirteen/auxie/ReaderSeeker"
-	"github.com/vault-thirteen/errorz"
+	"github.com/vault-thirteen/auxie/BOM/Reader"
 	"github.com/vault-thirteen/header"
 )
 
@@ -118,18 +115,62 @@ func (s *Server) processHttpRequest(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// Decode the response.
-	var respBody []byte
+	// Apply processors to the data stream.
+	var stream io.Reader
+	var closers []io.Closer
+	var mustClose bool
 	var contentEncodingHasChanged bool
-	respBody, contentEncodingHasChanged, err = s.decodeResponse(targetResponse)
-	if err != nil {
-		http.Error(w, "decoding error", http.StatusInternalServerError)
-		zlog.Error().Err(err).Msg("")
-		return
+	closers = make([]io.Closer, 0)
+	stream = targetResponse.Body
+
+	if (stream != nil) && (stream != http.NoBody) {
+		// 1. Gzip.
+		stream, mustClose, contentEncodingHasChanged, err = s.processContentEncoding(targetResponse, stream)
+		if err != nil {
+			http.Error(w, "decoding error", http.StatusInternalServerError)
+			zlog.Error().Err(err).Msg("")
+			return
+		}
+		if mustClose {
+			closers = append(closers, stream.(io.Closer))
+		}
+
+		// 2. BOM.
+		stream, mustClose, err = s.processBOM(stream)
+		if err != nil {
+			http.Error(w, "decoding error", http.StatusInternalServerError)
+			zlog.Error().Err(err).Msg("")
+			return
+		}
+		if mustClose {
+			closers = append(closers, stream.(io.Closer))
+		}
+	}
+
+	defer func() {
+		var derr error
+		derr = targetResponse.Body.Close()
+		if derr != nil {
+			zlog.Error().Err(derr).Msg("")
+		}
+
+		for _, c := range closers {
+			derr = c.Close()
+			if derr != nil {
+				zlog.Error().Err(derr).Msg("")
+			}
+		}
+	}()
+
+	if contentEncodingHasChanged {
+		targetResponse.Header.Del(header.HttpHeaderContentEncoding)
 	}
 
 	// Respond to the client.
-	s.writeResponseHeaders(w, targetResponse, respBody, contentEncodingHasChanged)
+	err = s.writeResponse(w, stream, targetResponse)
+	if err != nil {
+		zlog.Error().Err(err).Msg("")
+	}
 }
 
 func (s *Server) modifyRequest(req *http.Request) {
@@ -139,118 +180,48 @@ func (s *Server) modifyRequest(req *http.Request) {
 	req.Header.Add(header.HttpHeaderConnection, "close")
 }
 
-func (s *Server) decodeResponse(targetResponse *http.Response) (body []byte, contentEncodingHasChanged bool, err error) {
-	defer func() {
-		derr := targetResponse.Body.Close()
-		if derr != nil {
-			err = errorz.Combine(err, derr)
-		}
-	}()
-
-	// bodyIsReady is set to true when HTTP body has been read.
-	var bodyIsReady = false
-
-	// Get the body.
+func (s *Server) processContentEncoding(targetResponse *http.Response, inStream io.Reader) (outStream io.Reader, mustClose bool, contentEncodingHasChanged bool, err error) {
 	contentEncoding := targetResponse.Header.Get(header.HttpHeaderContentEncoding)
-	if (contentEncoding == "gzip") || (contentEncoding == "x-gzip") {
-		// Content is zipped.
-		if s.parameters.MustDecodeGzip {
+	if (contentEncoding == "gzip") || (contentEncoding == "x-gzip") { // Content is Gzipped.
+		if s.parameters.MustDecodeGzip { // We must decode the Gzip.
 			var gzipReader *gzip.Reader
-			gzipReader, err = gzip.NewReader(targetResponse.Body)
+			gzipReader, err = gzip.NewReader(inStream)
 			if err != nil {
-				return nil, contentEncodingHasChanged, err
+				return inStream, false, false, err
 			}
-			defer func() {
-				derr := gzipReader.Close()
-				if derr != nil {
-					err = errorz.Combine(err, derr)
-				}
-			}()
-
-			body, err = io.ReadAll(gzipReader)
-			if err != nil {
-				return nil, contentEncodingHasChanged, err
-			}
-
-			// Save results.
-			contentEncodingHasChanged = true
-			bodyIsReady = true
+			return gzipReader, true, true, nil // Gzip decoder.
 		}
 	}
 
-	if !bodyIsReady {
-		body, err = io.ReadAll(targetResponse.Body)
-		if err != nil {
-			return nil, contentEncodingHasChanged, err
-		}
-
-		// Save results.
-		bodyIsReady = true
-	}
-
-	// Remove the BOM if needed.
-	if s.parameters.MustRemoveBOM {
-		body, err = s.removeBOM(body)
-		if err != nil {
-			return nil, contentEncodingHasChanged, err
-		}
-	}
-
-	return body, contentEncodingHasChanged, nil
+	return inStream, false, false, nil // No changes to the stream.
 }
 
-func (s *Server) writeResponseHeaders(w http.ResponseWriter, response *http.Response, respBody []byte, contentEncodingHasChanged bool) {
-	if contentEncodingHasChanged {
-		response.Header.Del("Content-Encoding")
+func (s *Server) processBOM(inStream io.Reader) (outStream io.Reader, mustClose bool, err error) {
+	if s.parameters.MustRemoveBOM { // We must remove the BOM.
+		var bomReader *reader.Reader
+		bomReader, err = reader.NewReader(inStream, true)
+		if err != nil {
+			return inStream, false, err
+		}
+		return bomReader, true, nil // BOM remover.
 	}
 
-	for hdrName, lines := range response.Header {
+	return inStream, false, nil // No changes to the stream.
+}
+
+func (s *Server) writeResponse(w http.ResponseWriter, stream io.Reader, targetResponse *http.Response) (err error) {
+	for hdrName, lines := range targetResponse.Header {
 		for _, line := range lines {
 			w.Header().Add(hdrName, line)
 		}
 	}
 
-	w.WriteHeader(response.StatusCode)
+	w.WriteHeader(targetResponse.StatusCode)
 
-	_, err := w.Write(respBody)
+	_, err = io.Copy(w, stream)
 	if err != nil {
-		zlog.Error().Err(err).Msg("")
-		return
-	}
-}
-
-func (s *Server) removeBOM(data []byte) (newData []byte, err error) {
-	rdr := bytes.NewReader(data)
-
-	var possibleEncodings []bom.Encoding
-	possibleEncodings, err = bom.GetEncoding(rdr, false)
-	if err != nil {
-		return nil, err
+		return err
 	}
 
-	if len(possibleEncodings) == 0 {
-		// Either no BOM is found or we do not know something.
-		return data, nil
-	}
-
-	var encoding bom.Encoding
-	if len(possibleEncodings) > 1 {
-		// Guys, who created BOMs with similar bytes, you are not clever.
-		encoding = possibleEncodings[0]
-	} else {
-		encoding = possibleEncodings[0]
-	}
-
-	var rdr2 rs.ReaderSeeker
-	rdr2, err = bom.SkipBOMPrefix(rdr, encoding)
-	if err != nil {
-		return nil, err
-	}
-
-	newData, err = io.ReadAll(rdr2)
-	if err != nil {
-		return nil, err
-	}
-
-	return newData, nil
+	return nil
 }
