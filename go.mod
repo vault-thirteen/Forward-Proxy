@@ -5,8 +5,7 @@ go 1.20
 require (
 	github.com/rs/zerolog v1.29.0
 	github.com/vault-thirteen/Versioneer v0.2.2
-	github.com/vault-thirteen/auxie v0.9.2
-	github.com/vault-thirteen/errorz v1.0.1
+	github.com/vault-thirteen/auxie v0.9.3
 	github.com/vault-thirteen/header v1.0.1
 )
 
