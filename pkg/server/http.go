@@ -9,6 +9,7 @@ import (
 
 	zlog "github.com/rs/zerolog/log"
 	"github.com/vault-thirteen/auxie/BOM/Reader"
+	slreader "github.com/vault-thirteen/auxie/SLReader"
 	"github.com/vault-thirteen/header"
 )
 
@@ -84,17 +85,38 @@ func (s *Server) processHttpsRequest(w http.ResponseWriter, req *http.Request) {
 	<-closer
 }
 
-func (s *Server) copyData(target, client net.Conn, closer *chan bool) {
+func (s *Server) copyData(dst, src net.Conn, closer *chan bool) {
 	defer func() {
 		*closer <- true
 	}()
 
-	//TODO: Add speed limiter.
-	//TODO: Read s.mustStop flag.
-	_, err := io.Copy(target, client)
-	if err != nil {
-		zlog.Error().Err(err).Msg("")
-		return
+	var err error
+	if s.parameters.MustUseSpeedLimiter {
+		// Limit the speed.
+		var speedLimiter *slreader.SLReader
+		speedLimiter, err = slreader.NewReader(
+			src,
+			s.parameters.SpeedLimiterNormalLimitBytesPerSec,
+			s.parameters.SpeedLimiterBurstLimitBytesPerSec,
+			s.parameters.SpeedLimiterMaxBNR,
+		)
+		if err != nil {
+			zlog.Error().Err(err).Msg("")
+			return
+		}
+
+		_, err = io.Copy(dst, speedLimiter)
+		if err != nil {
+			zlog.Error().Err(err).Msg("")
+			return
+		}
+	} else {
+		// Do not limit the speed.
+		_, err = io.Copy(dst, src)
+		if err != nil {
+			zlog.Error().Err(err).Msg("")
+			return
+		}
 	}
 }
 
@@ -138,7 +160,18 @@ func (s *Server) processHttpRequest(w http.ResponseWriter, req *http.Request) {
 		// 2. BOM.
 		stream, mustClose, err = s.processBOM(stream)
 		if err != nil {
-			http.Error(w, "decoding error", http.StatusInternalServerError)
+			http.Error(w, "BOM processing error", http.StatusInternalServerError)
+			zlog.Error().Err(err).Msg("")
+			return
+		}
+		if mustClose {
+			closers = append(closers, stream.(io.Closer))
+		}
+
+		// 3. Speed limiter.
+		stream, mustClose, err = s.processSpeedLimiter(stream)
+		if err != nil {
+			http.Error(w, "speed limiting error", http.StatusInternalServerError)
 			zlog.Error().Err(err).Msg("")
 			return
 		}
@@ -204,6 +237,24 @@ func (s *Server) processBOM(inStream io.Reader) (outStream io.Reader, mustClose 
 			return inStream, false, err
 		}
 		return bomReader, true, nil // BOM remover.
+	}
+
+	return inStream, false, nil // No changes to the stream.
+}
+
+func (s *Server) processSpeedLimiter(inStream io.Reader) (outStream io.Reader, mustClose bool, err error) {
+	if s.parameters.MustUseSpeedLimiter { // We must limit the speed.
+		var speedLimiter *slreader.SLReader
+		speedLimiter, err = slreader.NewReader(
+			inStream,
+			s.parameters.SpeedLimiterNormalLimitBytesPerSec,
+			s.parameters.SpeedLimiterBurstLimitBytesPerSec,
+			s.parameters.SpeedLimiterMaxBNR,
+		)
+		if err != nil {
+			return inStream, false, err
+		}
+		return speedLimiter, true, nil // Speed limiter.
 	}
 
 	return inStream, false, nil // No changes to the stream.

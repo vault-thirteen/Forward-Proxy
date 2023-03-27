@@ -4,8 +4,8 @@ go 1.20
 
 require (
 	github.com/rs/zerolog v1.29.0
-	github.com/vault-thirteen/Versioneer v0.2.2
-	github.com/vault-thirteen/auxie v0.10.1
+	github.com/vault-thirteen/Versioneer v0.2.3
+	github.com/vault-thirteen/auxie v0.10.2
 	github.com/vault-thirteen/header v1.0.2
 )
 
@@ -16,4 +16,5 @@ require (
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	golang.org/x/sys v0.0.0-20210927094055-39ccf1dd6fa6 // indirect
+	golang.org/x/time v0.3.0 // indirect
 )
