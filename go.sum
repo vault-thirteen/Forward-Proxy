@@ -25,6 +25,15 @@ github.com/vault-thirteen/errorz v1.1.0/go.mod h1:EEqZH4OZWTXG14ZZSPFI7nzDqVMwWl
 github.com/vault-thirteen/header v1.1.0 h1:1g0nDJP235AE+QG/GfFKfwhjd2ktNrRrgGcEz2q1Y2Y=
 github.com/vault-thirteen/header v1.1.0/go.mod h1:aoucRD0ranRxbyb+bv4iU/OCiSNAMmYYNMmTOj/wF4w=
 github.com/vault-thirteen/tester v1.1.0 h1:Fi2SHMjrNuAbUzbvnuKkh1uoaIxMvVNCU6WB3rpviHk=
+github.com/vault-thirteen/Versioneer v0.3.0 h1:igGEWk9EhaalcyUkvOTs6CFNdC1zbAJlbo11VhYOEqw=
+github.com/vault-thirteen/Versioneer v0.3.0/go.mod h1:Xz43/Wfil6nUvkYuTOct4PMBpyN9JlcbXQzT3J5Thys=
+github.com/vault-thirteen/auxie v0.11.0 h1:IGsL9UACo8eU3yKIlS2GQFTuB7R0kBx/JVerZZptcr8=
+github.com/vault-thirteen/auxie v0.11.0/go.mod h1:S32zo7hgrnOdRu/sTHgGOBsLX8Ur/r+u8bHO98B6DJA=
+github.com/vault-thirteen/errorz v1.0.1 h1:pDX8J9JSMpCfsa7bnxUbPA5dOz3hLdaii0dIQsAxiRM=
+github.com/vault-thirteen/errorz v1.0.1/go.mod h1:T9zYGCtmo142goz52YL2U+nmiwcweILstlGTWP6/upQ=
+github.com/vault-thirteen/header v1.0.2 h1:L1R7f6J7qJAeSzCOb+jKO3l9+KTCzk3xz8UhV+XpRSg=
+github.com/vault-thirteen/header v1.0.2/go.mod h1:WtzokOuZ8S0lAbakhD/i/xoqYXiaWDBNm1SdiPoA/Zw=
+github.com/vault-thirteen/tester v1.0.1 h1:SixYUduUtuMT+Nib0XxtG4DUEN8MBv3MWnB1cXIs6aA=
 golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20210927094055-39ccf1dd6fa6 h1:foEbQz/B0Oz6YIqu/69kfXPYeFQAuuMYFkjaqXzl5Wo=
 golang.org/x/sys v0.0.0-20210927094055-39ccf1dd6fa6/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
