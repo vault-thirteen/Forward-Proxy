@@ -3,6 +3,8 @@ package server
 import (
 	"flag"
 	"time"
+
+	wm "github.com/vault-thirteen/Forward-Proxy/pkg/server/WorkMode"
 )
 
 type Parameters struct {
@@ -19,17 +21,22 @@ type Parameters struct {
 	SpeedLimiterMaxBNR                 float64
 
 	// Timeouts.
-	TargetConnectionTimeoutSec uint
-	targetConnectionTimeout    time.Duration
+	TargetConnectionDialTimeoutSec uint
+	targetConnectionDialTimeout    time.Duration
+
+	// Work mode.
+	WorkModeString string
+	WorkModeList   string
+	workMode       *wm.WorkMode
 }
 
 const (
-	HostDefault                       = "0.0.0.0"
-	PortDefault                       = 8080
-	TargetConnectionTimeoutSecDefault = 60
-	MustDecodeGzipDefault             = false
-	MustRemoveBOMDefault              = true
-	MustUseSpeedLimiterDefault        = true
+	HostDefault                           = "0.0.0.0"
+	PortDefault                           = 8080
+	TargetConnectionDialTimeoutSecDefault = 60
+	MustDecodeGzipDefault                 = false
+	MustRemoveBOMDefault                  = true
+	MustUseSpeedLimiterDefault            = true
 
 	// SpeedLimiterNormalLimitBytesPerSecDefault is a default value of a normal
 	// (average) speed limit in bytes per second.
@@ -53,21 +60,19 @@ const (
 )
 
 func ReadParameters() (p *Parameters, err error) {
-	logLevelFlag := flag.String(
-		"loglevel",
-		LogLevelDefault,
-		"log level; possible values: "+possibleLogLevelsHint(),
-	)
+	mustRemoveBOMFlag := flag.Bool("bom", MustRemoveBOMDefault, "Remove BOM from content")
+	mustDecodeGzipFlag := flag.Bool("gzip", MustDecodeGzipDefault, "Decode GZip content")
+	hostFlag := flag.String("host", HostDefault, "Listen host name")
+	workModeListFlag := flag.String("list", "", "Path to a list of IP addresses for the selected work mode")
+	logLevelFlag := flag.String("loglevel", LogLevelDefault, "Log level; possible values: "+possibleLogLevelsHint())
+	workModeStringFlag := flag.String("mode", wm.WorkModeStringDefault, "Work mode: public or private")
+	portFlag := flag.Uint("port", PortDefault, "Listen port number")
+	mustUseSpeedLimiterFlag := flag.Bool("sl", MustUseSpeedLimiterDefault, "Use speed limiter")
+	speedLimiterBurstLimitBytesPerSec := flag.Int("slbl", SpeedLimiterBurstLimitBytesPerSecDefault, "Speed limiter's burst limit (b/sec)")
+	speedLimiterMaxBNR := flag.Float64("slbnr", SpeedLimiterMaxBNRDefault, "Speed limiter's maximal burst-to-normal ratio")
+	speedLimiterNormalLimitBytesPerSec := flag.Float64("slnl", SpeedLimiterNormalLimitBytesPerSecDefault, "Speed limiter's normal limit (b/sec)")
+	targetConnectionDialTimeoutSecFlag := flag.Uint("tcdt", TargetConnectionDialTimeoutSecDefault, "Target connection dial timeout (sec)")
 
-	hostFlag := flag.String("host", HostDefault, "listen host name")
-	portFlag := flag.Uint("port", PortDefault, "listen port number")
-	targetConnectionTimeoutSecFlag := flag.Uint("tct", TargetConnectionTimeoutSecDefault, "target connection timeout in seconds")
-	mustDecodeGzipFlag := flag.Bool("gzip", MustDecodeGzipDefault, "decode GZip content")
-	mustRemoveBOMFlag := flag.Bool("bom", MustRemoveBOMDefault, "remove BOM from content")
-	mustUseSpeedLimiterFlag := flag.Bool("speed", MustUseSpeedLimiterDefault, "use speed limiter")
-	speedLimiterNormalLimitBytesPerSec := flag.Float64("slnl", SpeedLimiterNormalLimitBytesPerSecDefault, "speed limiter's normal limit (kb/s)")
-	speedLimiterBurstLimitBytesPerSec := flag.Int("slbl", SpeedLimiterBurstLimitBytesPerSecDefault, "speed limiter's burst limit (kb/s)")
-	speedLimiterMaxBNR := flag.Float64("slbnr", SpeedLimiterMaxBNRDefault, "speed limiter's maximal burst-to-normal ratio")
 	flag.Parse()
 
 	p = &Parameters{
@@ -81,11 +86,19 @@ func ReadParameters() (p *Parameters, err error) {
 		SpeedLimiterNormalLimitBytesPerSec: *speedLimiterNormalLimitBytesPerSec,
 		SpeedLimiterBurstLimitBytesPerSec:  *speedLimiterBurstLimitBytesPerSec,
 		SpeedLimiterMaxBNR:                 *speedLimiterMaxBNR,
+		WorkModeString:                     *workModeStringFlag,
+		WorkModeList:                       *workModeListFlag,
 	}
 
 	// Timeouts.
-	p.TargetConnectionTimeoutSec = *targetConnectionTimeoutSecFlag
-	p.targetConnectionTimeout = time.Second * time.Duration(p.TargetConnectionTimeoutSec)
+	p.TargetConnectionDialTimeoutSec = *targetConnectionDialTimeoutSecFlag
+	p.targetConnectionDialTimeout = time.Second * time.Duration(p.TargetConnectionDialTimeoutSec)
+
+	// Work mode.
+	p.workMode, err = wm.New(p.WorkModeString, p.WorkModeList)
+	if err != nil {
+		return nil, err
+	}
 
 	return p, nil
 }

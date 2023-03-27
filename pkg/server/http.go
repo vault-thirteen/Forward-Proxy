@@ -2,6 +2,7 @@ package server
 
 import (
 	"compress/gzip"
+	"context"
 	"io"
 	"net"
 	"net/http"
@@ -13,8 +14,27 @@ import (
 	"github.com/vault-thirteen/header"
 )
 
+const BCST = time.Millisecond * 50
+
 func (s *Server) router(w http.ResponseWriter, req *http.Request) {
 	var t1 = time.Now()
+
+	clientIPAddr, err := s.getClientIPAddress(req)
+	if err != nil {
+		zlog.Error().Err(err).Msg("")
+		return
+	}
+
+	ok := s.isIPAddressAllowed(clientIPAddr)
+	if !ok {
+		err = s.breakConnection(w)
+		if err != nil {
+			zlog.Error().Err(err).Msg("")
+			s.respondWithInternalServerError(w)
+			return
+		}
+		return
+	}
 
 	switch req.Method {
 	case http.MethodConnect:
@@ -27,11 +47,35 @@ func (s *Server) router(w http.ResponseWriter, req *http.Request) {
 		req.URL.String(), time.Since(t1).Milliseconds())
 }
 
+func (s *Server) breakConnection(w http.ResponseWriter) (err error) {
+	rc := http.NewResponseController(w)
+
+	var conn net.Conn
+	conn, _, err = rc.Hijack()
+	if err != nil {
+		err = rc.SetWriteDeadline(time.Now().Add(time.Microsecond))
+		if err != nil {
+			return err
+		}
+
+		time.Sleep(BCST)
+
+		return nil
+	}
+
+	err = conn.Close()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s *Server) processHttpsRequest(w http.ResponseWriter, req *http.Request) {
 	zlog.Debug().Msgf("request to '%s'", req.URL.String())
 
-	// Establish a TCP connection with target.
-	targetConn, err := net.DialTimeout("tcp", req.URL.Host, s.parameters.targetConnectionTimeout)
+	// Establish a TCP connection with the target.
+	targetConn, err := s.dialWithTimeout(context.Background(), "tcp", req.URL.Host)
 	if err != nil {
 		http.Error(w, "net.dial error", http.StatusInternalServerError)
 		zlog.Error().Err(err).Msg("")
@@ -126,7 +170,12 @@ func (s *Server) processHttpRequest(w http.ResponseWriter, req *http.Request) {
 	// Modify the original request.
 	s.modifyRequest(req)
 
-	client := &http.Client{}
+	// Make a request to the target.
+	client := &http.Client{
+		Transport: &http.Transport{
+			DialContext: s.dialWithTimeout,
+		},
+	}
 
 	var targetResponse *http.Response
 	var err error
@@ -275,4 +324,17 @@ func (s *Server) writeResponse(w http.ResponseWriter, stream io.Reader, targetRe
 	}
 
 	return nil
+}
+
+func (s *Server) dialWithTimeout(ctx context.Context, network, addr string) (net.Conn, error) {
+	d := net.Dialer{
+		Timeout:   s.parameters.targetConnectionDialTimeout,
+		Deadline:  time.Time{}, // Zero.
+		KeepAlive: time.Second * 15,
+	}
+	return d.DialContext(ctx, network, addr)
+}
+
+func (s *Server) respondWithInternalServerError(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusInternalServerError)
 }
