@@ -16,10 +16,10 @@ github.com/rogpeppe/go-internal v1.9.0/go.mod h1:WtVeX8xhTBvf0smdhujwtBcq4Qrzq/f
 github.com/rs/xid v1.4.0/go.mod h1:trrq9SKmegXys3aeAKXMUTdJsYXVwGY3RLcfgqegfbg=
 github.com/rs/zerolog v1.29.1 h1:cO+d60CHkknCbvzEWxP0S9K6KqyTjrCNUy1LdQLCGPc=
 github.com/rs/zerolog v1.29.1/go.mod h1:Le6ESbR7hc+DP6Lt1THiV8CQSdkkNrd3R0XbEgp3ZBU=
-github.com/vault-thirteen/VCS v0.3.1 h1:3DdICjqscbJ84sI7FVyqIuqlvX/XWP5hbv1WYx/Ek7M=
-github.com/vault-thirteen/VCS v0.3.1/go.mod h1:KgMCMMS3otestgTYX7MmJ+8GlwFQvikGgdyq5K7jOlI=
-github.com/vault-thirteen/Versioneer v0.6.1 h1:B/9sGRGlYVmEcDVF4ygVxYnKkwsrdlzRR8neVgD7AUM=
-github.com/vault-thirteen/Versioneer v0.6.1/go.mod h1:Q6s/S5M6NaGkRKxryCmmGjBQNxYehiJVhU0Aq6cP5tU=
+github.com/vault-thirteen/VCS v0.3.2 h1:v95VS9Tr6Ph6TnI0nvmPbI48uHw7Tj3KmkXNnnHXbjE=
+github.com/vault-thirteen/VCS v0.3.2/go.mod h1:KgMCMMS3otestgTYX7MmJ+8GlwFQvikGgdyq5K7jOlI=
+github.com/vault-thirteen/Versioneer v0.6.2 h1:b/8v+U0G4m7ii14296V6/wRRJaExSooSdIV8WtAfZrM=
+github.com/vault-thirteen/Versioneer v0.6.2/go.mod h1:lIn2aEw9RqeJ1GxRVKUrOPb4wLffLowVNYoU0oYR24c=
 github.com/vault-thirteen/auxie v0.12.4 h1:xYd83Fm0IveE/OqueaehjpCmXKM8QOdcsk1myNOSVMI=
 github.com/vault-thirteen/auxie v0.12.4/go.mod h1:oIb5RhpAPAHqYTCIrym97bR3KULuo5OlS3xEyu80KZU=
 github.com/vault-thirteen/errorz v1.1.0 h1:ul4UsZfQWy5p6DZ4bAclQ14I/bm9YnGfAg3q++v5zxg=
