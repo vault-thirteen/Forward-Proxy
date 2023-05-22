@@ -7,7 +7,7 @@ require (
 	github.com/vault-thirteen/Versioneer v0.6.2
 	github.com/vault-thirteen/auxie v0.12.4
 	github.com/vault-thirteen/errorz v1.1.0
-	github.com/vault-thirteen/header v1.1.0
+	github.com/vault-thirteen/header v1.2.0
 )
 
 require (
