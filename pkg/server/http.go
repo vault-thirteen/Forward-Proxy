@@ -11,7 +11,7 @@ import (
 	zlog "github.com/rs/zerolog/log"
 	"github.com/vault-thirteen/auxie/BOM/Reader"
 	slreader "github.com/vault-thirteen/auxie/SLReader"
-	"github.com/vault-thirteen/header"
+	"github.com/vault-thirteen/auxie/header"
 )
 
 const BCST = time.Millisecond * 50

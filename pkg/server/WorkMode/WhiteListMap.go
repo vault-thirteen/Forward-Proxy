@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	ipa "github.com/vault-thirteen/auxie/IPA"
+	ae "github.com/vault-thirteen/auxie/errors"
 	"github.com/vault-thirteen/auxie/reader"
-	"github.com/vault-thirteen/errorz"
 )
 
 const (
@@ -27,7 +27,7 @@ func NewWhiteListMapFromFile(path string) (wlm WhiteListMap, err error) {
 	defer func() {
 		derr := f.Close()
 		if derr != nil {
-			err = errorz.Combine(err, derr)
+			err = ae.Combine(err, derr)
 		}
 	}()
 

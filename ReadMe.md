@@ -1,13 +1,13 @@
 # Forward Proxy
 
-Forward proxy server for HTTP and HTTPS protocols. 
+Forward proxy server for _HTTP_ and _HTTPS_ protocols. 
 
 ## Supported Features
-* Forward-proxying HTTP data streams.
-* Forward-proxying HTTPS data streams.
-* Ability to unpack Gzipped data streams.
-* Ability to detect and remove Unicode BOM (Byte Order Mark).
-* Ability to limit the speed for both HTTP and HTTPS data streams.
+* Forward-proxying _HTTP_ data streams.
+* Forward-proxying _HTTPS_ data streams.
+* Ability to unpack _Gzipped_ data streams.
+* Ability to detect and remove _Unicode_ BOM (Byte Order Mark).
+* Ability to limit the speed for both _HTTP_ and _HTTPS_ data streams.
 * Configurable listen host name and port number.
 * Two work modes: public & private.
 * White list of IP addresses is supported.
@@ -46,5 +46,5 @@ Use the `build.bat` script included with the source code.
 
 
 * Limiting speed to values lower than 32 KiB/sec. (32'768 Bytes/sec.) is not 
-supported due to restrictions of the `io.Copy` function built into Go language.
-This limit may change in future versions of Golang.
+supported due to restrictions of the `io.Copy` function built into _Go_ language.
+This limit may change in future versions of _Golang_.
