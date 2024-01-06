@@ -17,8 +17,8 @@ github.com/rogpeppe/go-internal v1.9.0/go.mod h1:WtVeX8xhTBvf0smdhujwtBcq4Qrzq/f
 github.com/rs/xid v1.5.0/go.mod h1:trrq9SKmegXys3aeAKXMUTdJsYXVwGY3RLcfgqegfbg=
 github.com/rs/zerolog v1.31.0 h1:FcTR3NnLWW+NnTwwhFWiJSZr4ECLpqCm6QsEnyvbV4A=
 github.com/rs/zerolog v1.31.0/go.mod h1:/7mN4D5sKwJLZQ2b/znpjC3/GQWY/xaDXUM0kKWRHss=
-github.com/vault-thirteen/auxie v0.21.0 h1:Hced6J8j1xozr8BNq288byx98tF38HJOb66H0gNg4OI=
-github.com/vault-thirteen/auxie v0.21.0/go.mod h1:jlNi5ZRto40p8jMAIjt7oJD5iKmmnQE6v9uHlqT01ag=
+github.com/vault-thirteen/auxie v0.23.0 h1:gB0iBHa/4O3N1/vPNhwjjROgDzgxARSsnJ3idjB1Aqc=
+github.com/vault-thirteen/auxie v0.23.0/go.mod h1:jlNi5ZRto40p8jMAIjt7oJD5iKmmnQE6v9uHlqT01ag=
 golang.org/x/sys v0.0.0-20220811171246-fbc7d0a398ab/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.6.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.12.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=

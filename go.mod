@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/rs/zerolog v1.31.0
-	github.com/vault-thirteen/auxie v0.21.0
+	github.com/vault-thirteen/auxie v0.23.0
 )
 
 require (
