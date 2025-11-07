@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/vault-thirteen/Forward-Proxy/pkg/server"
-	ver "github.com/vault-thirteen/auxie/Versioneer"
+	ver "github.com/vault-thirteen/auxie/Versioneer/classes/Versioneer"
 )
 
 const ExitCodeBadParameters = 1
