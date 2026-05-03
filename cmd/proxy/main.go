@@ -8,8 +8,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/vault-thirteen/Forward-Proxy/pkg/server"
 	ver "github.com/vault-thirteen/auxie/Versioneer/classes/Versioneer"
+
+	"github.com/vault-thirteen/Forward-Proxy/pkg/server"
 )
 
 const ExitCodeBadParameters = 1
@@ -58,7 +59,7 @@ func mustBeNoError(err error) {
 }
 
 func showIntro() {
-	versioneer, err := ver.New()
+	versioneer, err := ver.New(false)
 	mustBeNoError(err)
 	versioneer.ShowIntroText("")
 	versioneer.ShowComponentsInfoText()
