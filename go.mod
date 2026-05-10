@@ -1,10 +1,10 @@
 module github.com/vault-thirteen/Forward-Proxy
 
-go 1.25.9
+go 1.25.10
 
 require (
 	github.com/rs/zerolog v1.35.1
-	github.com/vault-thirteen/auxie v0.36.3
+	github.com/vault-thirteen/auxie v0.36.4
 )
 
 require (
@@ -13,6 +13,6 @@ require (
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.22 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
-	golang.org/x/sys v0.43.0 // indirect
+	golang.org/x/sys v0.44.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 )
